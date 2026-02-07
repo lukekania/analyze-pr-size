@@ -31839,6 +31839,11 @@ const github = __nccwpck_require__(3228);
 
 const MARKER = "<!-- analyze-pr-size:v0 -->";
 
+function toBool(s, def) {
+  if (s === undefined || s === null || s === "") return def;
+  return /^(true|yes|1|on)$/i.test(String(s).trim());
+}
+
 function clampInt(val, def, min, max) {
   const n = parseInt(String(val ?? def), 10);
   if (!Number.isFinite(n)) return def;
@@ -31913,6 +31918,42 @@ async function listAllPRFiles(octokit, { owner, repo, pull_number, maxFiles }) {
   return files;
 }
 
+const SIZE_LABEL_PREFIX = "size:";
+
+async function applySizeLabel(octokit, { owner, repo, prNumber, size }) {
+  const targetLabel = SIZE_LABEL_PREFIX + size;
+
+  const { data: currentLabels } = await octokit.rest.issues.listLabelsOnIssue({
+    owner,
+    repo,
+    issue_number: prNumber,
+    per_page: 100
+  });
+
+  const staleLabels = currentLabels.filter(
+    (l) => l.name.startsWith(SIZE_LABEL_PREFIX) && l.name !== targetLabel
+  );
+
+  for (const label of staleLabels) {
+    await octokit.rest.issues.removeLabel({
+      owner,
+      repo,
+      issue_number: prNumber,
+      name: label.name
+    });
+  }
+
+  const alreadyApplied = currentLabels.some((l) => l.name === targetLabel);
+  if (!alreadyApplied) {
+    await octokit.rest.issues.addLabels({
+      owner,
+      repo,
+      issue_number: prNumber,
+      labels: [targetLabel]
+    });
+  }
+}
+
 function fmt(n) {
   return new Intl.NumberFormat("en-US").format(n);
 }
@@ -31922,6 +31963,7 @@ async function run() {
     const token = core.getInput("github_token", { required: true });
 
     const maxFiles = clampInt(core.getInput("max_files"), 500, 1, 5000);
+    const addLabel = toBool(core.getInput("add_label"), false);
 
     const xsLines = clampInt(core.getInput("xs_lines"), 50, 1, 1000000);
     const sLines = clampInt(core.getInput("s_lines"), 200, xsLines, 1000000);
@@ -31995,6 +32037,11 @@ async function run() {
 
     core.info(res.updated ? "Updated PR size comment." : "Created PR size comment.");
     core.info(`Comment: ${res.url}`);
+
+    if (addLabel) {
+      await applySizeLabel(octokit, { owner, repo, prNumber, size });
+      core.info(`Applied label: ${SIZE_LABEL_PREFIX}${size}`);
+    }
   } catch (err) {
     core.setFailed(err?.message || String(err));
   }

@@ -6,6 +6,10 @@ inputs:
   max_files:
     required: false
     default: "500"
+  add_label:
+    description: "Add a size label (size:XS … size:XL) to the PR"
+    required: false
+    default: "false"
 
   xs_lines:
     required: false
