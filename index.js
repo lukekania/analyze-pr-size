@@ -118,6 +118,37 @@ async function applySizeLabel(octokit, { owner, repo, prNumber, size }) {
   }
 }
 
+function topChangedDirectories(files, maxDepth, limit) {
+  const dirMap = new Map();
+
+  for (const f of files) {
+    const segments = f.filename.split("/");
+    const dir = segments.length <= maxDepth
+      ? segments.slice(0, -1).join("/") || "."
+      : segments.slice(0, maxDepth).join("/");
+    const prev = dirMap.get(dir) || { files: 0, lines: 0 };
+    prev.files += 1;
+    prev.lines += (f.additions || 0) + (f.deletions || 0);
+    dirMap.set(dir, prev);
+  }
+
+  return [...dirMap.entries()]
+    .sort((a, b) => b[1].lines - a[1].lines)
+    .slice(0, limit)
+    .map(([dir, stats]) => ({ dir, ...stats }));
+}
+
+function formatDirectoryTable(dirs) {
+  if (dirs.length === 0) return "";
+  let table = "\n**Top changed directories:**\n\n";
+  table += "| Directory | Files | Lines |\n";
+  table += "|-----------|------:|------:|\n";
+  for (const d of dirs) {
+    table += `| \`${d.dir}\` | ${d.files} | ${fmt(d.lines)} |\n`;
+  }
+  return table;
+}
+
 function fmt(n) {
   return new Intl.NumberFormat("en-US").format(n);
 }
@@ -184,13 +215,17 @@ async function run() {
 
     const size = maxBucket(lineBucket, fileBucket);
 
+    const topDirs = topChangedDirectories(files, 2, 5);
+    const dirSection = formatDirectoryTable(topDirs);
+
     const body =
       `### PR Size Summary\n${MARKER}\n\n` +
       `Files changed: **${fmt(fileCount)}**\n\n` +
       `Lines added: **+${fmt(additions)}**  \n` +
       `Lines removed: **-${fmt(deletions)}**  \n` +
       `Total changed: **${fmt(totalChanged)}**\n\n` +
-      `Size: **${size}**\n\n` +
+      `Size: **${size}**\n` +
+      dirSection + `\n` +
       `_Notes: size is based on the larger of file-count bucket and line-change bucket._\n`;
 
     const res = await upsertComment(octokit, {

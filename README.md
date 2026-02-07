@@ -88,7 +88,6 @@ This prevents “many files, few lines” PRs from being mislabeled as small.
 
 - Detect “generated files” and downweight them
 - Split recommendations (suggest splitting when XL)
-- Highlight top changed directories/modules
 - Track review time by size bucket (analytics)
 
 ---
