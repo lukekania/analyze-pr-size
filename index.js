@@ -1,5 +1,6 @@
 const core = require("@actions/core");
 const github = require("@actions/github");
+const { minimatch } = require("minimatch");
 
 const MARKER = "<!-- analyze-pr-size:v0 -->";
 
@@ -118,6 +119,33 @@ async function applySizeLabel(octokit, { owner, repo, prNumber, size }) {
   }
 }
 
+const DEFAULT_IGNORE = "dist/**,*.min.js,*.min.css,package-lock.json,yarn.lock,pnpm-lock.yaml,*.generated.*";
+
+function parseIgnorePatterns(raw) {
+  return raw
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
+
+function filterIgnoredFiles(files, patterns) {
+  if (patterns.length === 0) return { counted: files, ignoredCount: 0 };
+
+  const counted = [];
+  let ignoredCount = 0;
+
+  for (const f of files) {
+    const ignored = patterns.some((p) => minimatch(f.filename, p, { matchBase: true }));
+    if (ignored) {
+      ignoredCount++;
+    } else {
+      counted.push(f);
+    }
+  }
+
+  return { counted, ignoredCount };
+}
+
 function topChangedDirectories(files, maxDepth, limit) {
   const dirMap = new Map();
 
@@ -160,6 +188,8 @@ async function run() {
     const maxFiles = clampInt(core.getInput("max_files"), 500, 1, 5000);
     const addLabel = toBool(core.getInput("add_label"), false);
     const stepSummary = toBool(core.getInput("step_summary"), false);
+    const ignoreRaw = core.getInput("ignore_patterns") || DEFAULT_IGNORE;
+    const ignorePatterns = parseIgnorePatterns(ignoreRaw);
 
     const xsLines = clampInt(core.getInput("xs_lines"), 50, 1, 1000000);
     const sLines = clampInt(core.getInput("s_lines"), 200, xsLines, 1000000);
@@ -181,12 +211,14 @@ async function run() {
     const { owner, repo } = ctx.repo;
     const prNumber = ctx.payload.pull_request.number;
 
-    const files = await listAllPRFiles(octokit, {
+    const allFiles = await listAllPRFiles(octokit, {
       owner,
       repo,
       pull_number: prNumber,
       maxFiles
     });
+
+    const { counted: files, ignoredCount } = filterIgnoredFiles(allFiles, ignorePatterns);
 
     let additions = 0;
     let deletions = 0;
@@ -225,6 +257,7 @@ async function run() {
       `Lines removed: **-${fmt(deletions)}**  \n` +
       `Total changed: **${fmt(totalChanged)}**\n\n` +
       `Size: **${size}**\n` +
+      (ignoredCount > 0 ? `_(${ignoredCount} generated/lock file${ignoredCount === 1 ? "" : "s"} excluded)_\n` : "") +
       dirSection + `\n` +
       `_Notes: size is based on the larger of file-count bucket and line-change bucket._\n`;
 

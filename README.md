@@ -75,6 +75,7 @@ jobs:
 | l_files | 30 | L upper bound |
 | add_label | false | Add a `size:XS` … `size:XL` label to the PR |
 | step_summary | false | Write the size summary to the GitHub Actions Step Summary |
+| ignore_patterns | `dist/**,*.min.js,*.min.css,package-lock.json,yarn.lock,pnpm-lock.yaml,*.generated.*` | Comma-separated glob patterns for generated/lock files to exclude from size calculation |
 
 Classification uses the larger of:
 - file bucket, and
@@ -86,7 +87,6 @@ This prevents “many files, few lines” PRs from being mislabeled as small.
 
 ## Possible Future Features
 
-- Detect “generated files” and downweight them
 - Split recommendations (suggest splitting when XL)
 - Track review time by size bucket (analytics)
 

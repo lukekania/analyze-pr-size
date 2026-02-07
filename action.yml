@@ -14,6 +14,10 @@ inputs:
     description: "Write the size summary to the GitHub Actions Step Summary"
     required: false
     default: "false"
+  ignore_patterns:
+    description: "Comma-separated glob patterns for generated/lock files to exclude from size calculation"
+    required: false
+    default: "dist/**,*.min.js,*.min.css,package-lock.json,yarn.lock,pnpm-lock.yaml,*.generated.*"
 
   xs_lines:
     required: false

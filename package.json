@@ -5,7 +5,8 @@
   "type": "commonjs",
   "dependencies": {
     "@actions/core": "^2.0.2",
-    "@actions/github": "^7.0.0"
+    "@actions/github": "^7.0.0",
+    "minimatch": "^10.1.2"
   },
   "devDependencies": {
     "@vercel/ncc": "^0.38.3"
