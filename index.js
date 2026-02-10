@@ -1,10 +1,10 @@
-const core = require("@actions/core");
-const github = require("@actions/github");
+import * as core from "@actions/core";
+import * as github from "@actions/github";
 
-const { toBool, clampInt, upsertComment, deleteCommentByMarker, listAllPRFiles, fmt } = require("./lib/utils");
-const { DEFAULT_IGNORE, parseIgnorePatterns, filterIgnoredFiles, analyzeSize, formatSizeSection, applySizeLabel } = require("./lib/size-analyzer");
-const { daysBetween, analyzeState, formatStateSection, staleSweep } = require("./lib/state-explainer");
-const { parseCommaSeparated, analyzeReviewers, formatReviewerSection } = require("./lib/reviewer-suggester");
+import { toBool, clampInt, upsertComment, deleteCommentByMarker, listAllPRFiles, fmt } from "./lib/utils.js";
+import { DEFAULT_IGNORE, parseIgnorePatterns, filterIgnoredFiles, analyzeSize, formatSizeSection, applySizeLabel } from "./lib/size-analyzer.js";
+import { daysBetween, analyzeState, formatStateSection, staleSweep } from "./lib/state-explainer.js";
+import { parseCommaSeparated, analyzeReviewers, formatReviewerSection } from "./lib/reviewer-suggester.js";
 
 const MARKER = "<!-- pr-advisor:v0 -->";
 
